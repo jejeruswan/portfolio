@@ -1,8 +1,14 @@
+"use client";
+
+import { useState } from "react";
+import { motion } from "framer-motion";
 import NavBar from "@/components/NavBar";
 import Typewriter from "@/components/Typewriter";
 import PolaroidCard from "@/components/PolaroidCard";
+import LoadingScreen from "@/components/LoadingScreen";
 
 export default function About() {
+  const [showLoading, setShowLoading] = useState(true);
   const polaroidCards = [
     {
       image: "/images/card1.jpg", // Replace with your image paths
@@ -49,11 +55,19 @@ export default function About() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#000000]">
-      <NavBar />
-      <main className="relative w-full min-h-screen">
+    <>
+      {showLoading && <LoadingScreen onComplete={() => setShowLoading(false)} />}
+
+      <motion.div
+        className="min-h-screen bg-[#000000]"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: showLoading ? 0 : 1 }}
+        transition={{ duration: 0.5, ease: "easeInOut" }}
+      >
+        <NavBar />
+        <main className="relative w-full min-h-screen">
         {/* I'm a */}
-        <div
+        <motion.div
           className="absolute"
           style={{
             top: "290px",
@@ -62,12 +76,15 @@ export default function About() {
             letterSpacing: "0px",
             fontFamily: "var(--font-inter)",
           }}
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: showLoading ? 0 : 1, y: showLoading ? 30 : 0 }}
+          transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
         >
           I&apos;m a
-        </div>
+        </motion.div>
 
         {/* Typewriter text - product designer / girl obsessed with trying new things */}
-        <div
+        <motion.div
           className="absolute italic"
           style={{
             top: "290px",
@@ -76,15 +93,18 @@ export default function About() {
             letterSpacing: "1px",
             fontFamily: "var(--font-instrument-serif)",
           }}
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: showLoading ? 0 : 1, y: showLoading ? 30 : 0 }}
+          transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}
         >
           <Typewriter
             texts={["product designer", "girl obsessed with trying new things"]}
             className="italic"
           />
-        </div>
+        </motion.div>
 
         {/* Second line */}
-        <div
+        <motion.div
           className="absolute"
           style={{
             top: "322px",
@@ -93,6 +113,9 @@ export default function About() {
             letterSpacing: "0px",
             fontFamily: "var(--font-inter)",
           }}
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: showLoading ? 0 : 1, y: showLoading ? 30 : 0 }}
+          transition={{ duration: 0.6, delay: 0.4, ease: "easeOut" }}
         >
           crafting{" "}
           <span
@@ -102,7 +125,7 @@ export default function About() {
             intuitive
           </span>{" "}
           systems that don&apos;t exist and guiding them to life.
-        </div>
+        </motion.div>
 
         {/* Polaroid Cards */}
         {polaroidCards.map((card, index) => (
@@ -113,9 +136,12 @@ export default function About() {
             top={card.top}
             left={card.left}
             rotation={card.rotation}
+            delay={0.5 + index * 0.1}
+            showLoading={showLoading}
           />
         ))}
       </main>
-    </div>
+      </motion.div>
+    </>
   );
 }

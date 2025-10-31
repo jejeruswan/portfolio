@@ -7,8 +7,9 @@ export interface CardData {
   title: string;
   description: string;
   image: string;
-  detailImage?: string; // Different image for the detail page
+  detailImage?: string;
   detailContent?: string;
+  slug: string; // URL slug for the project page
 }
 
 interface CardProps {
@@ -22,15 +23,15 @@ export default function Card({ card, onClick, style }: CardProps) {
     <div
       onClick={onClick}
       style={style}
-      className="w-full h-full transition-transform hover:scale-105"
+      className="w-full h-full transition-transform hover:scale-105 rounded-[15px] overflow-hidden"
       data-card-id={card.id}
     >
-      <div className="w-full h-full bg-gray-800 rounded-lg shadow-2xl overflow-hidden">
+      <div className="w-full h-full bg-gray-800 rounded-[15px] shadow-2xl overflow-hidden">
         <Image
           src={card.image}
           alt={card.title}
           fill
-          className="object-cover"
+          className="object-cover rounded-[15px]"
           priority
         />
       </div>

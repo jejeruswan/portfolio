@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import Card, { CardData } from "./Card";
 
 interface CarouselProps {
@@ -16,9 +17,18 @@ export default function Carousel({ cards }: CarouselProps) {
   const [currentTranslate, setCurrentTranslate] = useState(0);
   const [prevTranslate, setPrevTranslate] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [hasAnimated, setHasAnimated] = useState(false);
+  const [showStack, setShowStack] = useState(false); // New state for stack reveal
   const containerRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<number>(0);
   const lastSwipeTime = useRef<number>(0);
+
+  // Trigger initial animation on mount
+  useEffect(() => {
+    // Show stack immediately so cards fly to their final positions
+    setShowStack(true);
+    setHasAnimated(true);
+  }, []);
 
   const handlePrevious = useCallback(() => {
     if (currentIndex > 0) {
@@ -168,41 +178,42 @@ export default function Carousel({ cards }: CarouselProps) {
 
   const getCardStyle = (index: number): React.CSSProperties => {
     const position = index - currentIndex;
-    
-    // Reduced drag offset for less sensitive dragging (0.3 instead of 0.5)
+
+    // Reduced drag offset for less sensitive dragging
     const dragOffset = isDragging && Math.abs(position) <= 2 ? currentTranslate * 0.3 : 0;
 
-    // Stacked effect from right to left (matching Figma design)
-    const baseTranslateX = position * 80; // Spacing between cards
+    // Stack cards to the RIGHT with offset - increases after showStack is true
+    const stackOffset = showStack ? 80 : 0; // Slide 80px to the right to reveal
+    const baseTranslateX = position * stackOffset;
     const translateX = baseTranslateX + dragOffset;
-    const translateY = Math.abs(position) * 10; // Slight vertical offset
-    const scale = Math.max(0.85, 1 - Math.abs(position) * 0.08); // Scale down cards
-    const opacity = position === 0 ? 1 : Math.max(0.3, 0.7 - Math.abs(position) * 0.15);
+    const translateY = Math.abs(position) * (showStack ? 10 : 0); // Add vertical offset when showing stack
+    const scale = Math.max(0.92, 1 - Math.abs(position) * 0.04);
+    const opacity = position === 0 ? 1 : Math.max(0.7, 0.9 - Math.abs(position) * 0.1);
     const zIndex = cards.length - Math.abs(position);
 
-    // Rotation for depth effect (optional, can remove if you prefer)
-    const rotateY = position * -3;
+    // Slight rotation for depth
+    const rotateY = position * -2;
 
     return {
       transform: `
-        translateX(${translateX}px) 
-        translateY(${translateY}px) 
+        translateX(${translateX}px)
+        translateY(${translateY}px)
         scale(${scale})
         rotateY(${rotateY}deg)
       `,
       opacity: Math.max(opacity, 0),
       zIndex,
-      transition: isDragging 
-        ? "none" 
+      transition: isDragging
+        ? "none"
         : "all 0.6s cubic-bezier(0.4, 0, 0.2, 1)",
       pointerEvents: position === 0 ? "auto" : "none",
     };
   };
 
   return (
-    <div 
+    <div
       ref={containerRef}
-      className="relative w-full h-[600px] flex items-center justify-center overflow-hidden select-none"
+      className="relative w-full h-[600px] flex items-center justify-center overflow-visible select-none"
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
@@ -212,93 +223,111 @@ export default function Carousel({ cards }: CarouselProps) {
       onTouchEnd={handleTouchEnd}
       style={{ perspective: "1500px" }}
     >
+      {/* Container centered with fixed width matching card width */}
       <div className="relative w-[500px] h-[350px]">
-        {cards.map((card, index) => (
-          <div
-            key={card.id}
-            className="absolute w-[500px] h-[350px] cursor-pointer"
-            style={getCardStyle(index)}
-            onClick={(e) => {
-              // Only allow click on the front card
-              if (index === currentIndex && !isDragging) {
-                const element = e.currentTarget;
-                const rect = element.getBoundingClientRect();
-                const rectData = {
-                  top: rect.top,
-                  left: rect.left,
-                  width: rect.width,
-                  height: rect.height,
-                };
-                router.push(`/work/${card.id}?rect=${encodeURIComponent(JSON.stringify(rectData))}`);
-              }
-            }}
-          >
-            <Card
-              card={card}
-              onClick={() => {}}
-              style={{}}
-            />
-          </div>
-        ))}
+        {cards.map((card, index) => {
+          const position = index - currentIndex;
+
+          // Each card flies in from the RIGHT sequentially
+          const initialX = 600; // Start from right side (off-screen)
+          const initialY = 0;
+          const initialScale = 0.3; // Small size
+          const initialRotateY = -15; // Slight 3D tilt when flying in
+
+          // Calculate final stacked position for THIS card based on current index
+          const finalTranslateX = position * (showStack ? 80 : 0);
+          const finalTranslateY = Math.abs(position) * (showStack ? 10 : 0);
+          const finalScale = Math.max(0.92, 1 - Math.abs(position) * 0.04);
+          const finalOpacity = position === 0 ? 1 : Math.max(0.7, 0.9 - Math.abs(position) * 0.1);
+          const finalRotateY = position * -2;
+
+          // Get the style for CSS properties that don't conflict with motion
+          const finalStyle = getCardStyle(index);
+
+          return (
+            <motion.div
+              key={card.id}
+              className="absolute w-[500px] h-[350px] cursor-pointer"
+              initial={{
+                x: initialX,
+                y: initialY,
+                scale: initialScale,
+                opacity: 0,
+                rotateY: initialRotateY,
+              }}
+              animate={{
+                x: finalTranslateX,
+                y: finalTranslateY,
+                scale: finalScale,
+                opacity: finalOpacity,
+                rotateY: finalRotateY,
+              }}
+              transition={{
+                duration: hasAnimated ? 0.8 : 1.4, // Much slower for fluidity
+                delay: hasAnimated ? 0 : index * 0.18, // Slower sequential delay
+                ease: [0.16, 0.84, 0.44, 1], // Very smooth, fluid ease
+                scale: {
+                  duration: hasAnimated ? 0.8 : 1.6, // Slower expansion
+                  delay: hasAnimated ? 0 : index * 0.18,
+                  ease: [0.16, 1, 0.3, 1], // Gentle expansion with subtle overshoot
+                },
+                opacity: {
+                  duration: hasAnimated ? 0.8 : 1,
+                  delay: hasAnimated ? 0 : index * 0.18,
+                  ease: "easeOut",
+                },
+              }}
+              style={{
+                zIndex: finalStyle.zIndex,
+                pointerEvents: finalStyle.pointerEvents,
+              }}
+              onClick={(e) => {
+                // Only allow click on the front card
+                if (index === currentIndex && !isDragging) {
+                  const element = e.currentTarget;
+                  const rect = element.getBoundingClientRect();
+                  const rectData = {
+                    top: rect.top,
+                    left: rect.left,
+                    width: rect.width,
+                    height: rect.height,
+                  };
+                  router.push(`/work/${card.slug}?rect=${encodeURIComponent(JSON.stringify(rectData))}`);
+                }
+              }}
+            >
+              <Card
+                card={card}
+                onClick={() => {}}
+                style={{}}
+              />
+            </motion.div>
+          );
+        })}
       </div>
-
-      {/* Navigation Arrows */}
-      <button
-        onClick={handlePrevious}
-        disabled={currentIndex === 0}
-        className="absolute left-8 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed transition-all hover:scale-110 z-10"
-        aria-label="Previous card"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          strokeWidth={2}
-          stroke="currentColor"
-          className="w-8 h-8"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M15.75 19.5L8.25 12l7.5-7.5"
-          />
-        </svg>
-      </button>
-
-      <button
-        onClick={handleNext}
-        disabled={currentIndex === cards.length - 1}
-        className="absolute right-8 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed transition-all hover:scale-110 z-10"
-        aria-label="Next card"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          strokeWidth={2}
-          stroke="currentColor"
-          className="w-8 h-8"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M8.25 4.5l7.5 7.5-7.5 7.5"
-          />
-        </svg>
-      </button>
 
       {/* Number Indicator */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10">
-        <span className="text-white" style={{ fontFamily: 'Inter' }}>
+      <motion.div
+        className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: hasAnimated ? 1 : 0, y: hasAnimated ? 0 : 20 }}
+        transition={{ duration: 0.6, delay: 0.8, ease: "easeOut" }}
+      >
+        <span className="text-white font-inter text-lg">
           {currentIndex + 1} - {cards.length}
         </span>
-      </div>
+      </motion.div>
 
-      {/* Swipe Hint (optional - shows on first load) */}
+      {/* Swipe Hint */}
       {currentIndex === 0 && (
-        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 text-gray-500 text-sm animate-pulse pointer-events-none">
+        <motion.div
+          className="absolute bottom-20 left-1/2 -translate-x-1/2 text-gray-500 text-sm animate-pulse pointer-events-none"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: hasAnimated ? 1 : 0, y: hasAnimated ? 0 : 20 }}
+          transition={{ duration: 0.6, delay: 1, ease: "easeOut" }}
+        >
           Swipe or use arrows to navigate →
-        </div>
+        </motion.div>
       )}
     </div>
   );

@@ -9,6 +9,8 @@ interface PolaroidCardProps {
   top: number;
   left: number;
   rotation: number;
+  delay?: number;
+  showLoading?: boolean;
 }
 
 export default function PolaroidCard({
@@ -17,6 +19,8 @@ export default function PolaroidCard({
   top,
   left,
   rotation,
+  delay = 0,
+  showLoading = false,
 }: PolaroidCardProps) {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -25,16 +29,25 @@ export default function PolaroidCard({
       className="absolute cursor-pointer"
       style={{
         width: "250px",
-        height: isHovered ? "500px" : "350px", // Extend hover area when elevated
+        height: isHovered ? "500px" : "250px", // Extend hover area when elevated
         paddingTop: isHovered ? "0px" : "0px",
       }}
       initial={{
         top: `${top}px`,
         left: `${left}px`,
+        opacity: 0,
+        y: 40,
       }}
       animate={{
         top: `${top}px`,
         left: `${left}px`,
+        opacity: showLoading ? 0 : 1,
+        y: showLoading ? 40 : 0,
+      }}
+      transition={{
+        duration: 0.7,
+        delay: delay,
+        ease: "easeOut",
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -46,7 +59,7 @@ export default function PolaroidCard({
           height: "350px",
         }}
         animate={{
-          y: isHovered ? -350 : 0,
+          y: isHovered ? -250 : 0,
           rotate: isHovered ? 0 : rotation,
           zIndex: isHovered ? 50 : 1,
         }}
